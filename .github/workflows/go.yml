@@ -26,6 +26,13 @@ jobs:
         install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-toolchain base-devel glib2-devel pkg-config'
         path-type: inherit
 
+    - name: Configure MSYS2 home
+      shell: msys2 {0}
+      run: |
+        if ! grep -q "db_home: windows" /etc/nsswitch.conf; then
+          echo "db_home: windows" >> /etc/nsswitch.conf
+        fi
+
     - name: Patch pkg-config bug
       shell: msys2 {0}
       run: sed -i -e 's/-Wl,-luuid/-luuid/g' /mingw64/lib/pkgconfig/gdk-3.0.pc
