@@ -65,9 +65,32 @@ jobs:
       shell: msys2 {0}
       run: git submodule update --init && go build -ldflags "-H=windowsgui"
 
-    - name: Copy artifacts
+    - name: Bundle artifacts
       shell: msys2 {0}
-      run: mkdir /c/artifacts && cp roblox-dissector.exe /c/artifacts && cp -R res/ /c/artifacts/res
+      run: |
+        dest=/c/artifacts
+        mkdir -p $dest
+        cp roblox-dissector.exe $dest
+        cp -R res/ $dest/res
+        
+        function copy_deps_recursive() {
+          local file="$1"
+          local dest="$2"
+          local -n seen_ref="$3"
+          for dep in $(objdump -p "$file" | grep 'DLL Name:' | sed -e 's/.*DLL Name: //'); do
+            if [[ ! " ${seen_ref[*]} " =~ " ${dep} " ]]; then
+              seen_ref+=("$dep")
+              local dep_path=$(find /mingw64/bin /mingw64/lib -name "$dep" 2>/dev/null | head -1)
+              if [[ -n "$dep_path" ]]; then
+                cp "$dep_path" "$dest"
+                copy_deps_recursive "$dep_path" "$dest" seen_ref
+              fi
+            fi
+          done
+        }
+        
+        declare -a seen=()
+        copy_deps_recursive $dest/roblox-dissector.exe $dest seen
 
     - name: Insert WinDivert binaries
       shell: msys2 {0}
